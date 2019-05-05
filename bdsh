@@ -1,0 +1,133 @@
+#!/bin/bash
+## EPITECH PROJECT, 2018
+## shell
+## File description:
+## shell
+
+check_occurence_in_string() {
+    occurence=$(echo $1 | grep -ob "$2" | grep -oE '[0-9]+')
+    if [[ $occurence < 0 ]]; then
+        >&2 echo "Error: Bad argument"
+        exit 1
+    fi
+}
+
+cmd_describe() {
+    occurence="\"desc_$4\""
+    check_occurence_in_string "$file" "$occurence"
+    output=${file##*desc_$4\": [}
+    output=${output%%]*}
+    echo $output | sed 's/\"//g' | sed 's/ //g' | sed -r 's/[,]+/\n/g'
+}
+
+cmd_select() {
+    if [ $# -eq 4 ]; then
+        >&2 echo "Error: Bad arguments list"
+        exit 1
+    elif [ $(echo $5 | grep "," -o | wc -l) -ne 1 ]; then
+        >&2 echo "Error: Bad argument"
+        exit 1
+    fi
+    data=$file
+    occurence="\"data_$4\""
+    category1=${5%%,*}
+    category2=${5##*,}
+    category1_quote=$(echo "\"""$category1""\"")
+    category2_quote=$(echo "\"""$category2""\"")
+    check_occurence_in_string "$data" "$occurence"
+    data=${data##*data_$4\": [}
+    data=${data%%]*}
+    check_occurence_in_string "$data" "$category1_quote"
+    check_occurence_in_string "$data" "$category2_quote"
+    if [ $category1 == $category2 ]; then
+        >&2 echo "Error: Bad argument"
+        exit 1
+    fi
+    nb_elements=$(echo $data | grep "{" -o | wc -l)
+    nb_bytes_category1=$(( ${#category1} + 4 ))
+    table_header=$(echo -e "$category1""    | ""$category2"'\n-------------------------')
+    for (( i = 0; i < nb_elements; i++ )) do
+        element1_to_find=$(echo "$data" | grep -E -m 1 "$category1_quote")
+        element1_to_find="${element1_to_find#*: \"}"
+        element1_to_find="${element1_to_find%\"*}"
+        element2_to_find=$(echo "$data" | grep -E -m 1 "$category2_quote")
+        element2_to_find="${element2_to_find#*: \"}"
+        element2_to_find="${element2_to_find%\"*}"
+        for (( j = ${#element1_to_find}; j < nb_bytes_category1; j++ )) do
+            element1_to_find=$(echo -e "$element1_to_find"" ")
+        done
+        if [ $i -eq 0 ]; then
+            table=$(echo -e "$element1_to_find""| ""$element2_to_find"'\n')
+        else
+            table=$(echo -e "$table"'\n'"$element1_to_find""| ""$element2_to_find"'\n')
+        fi
+        data="${data#*\}}"
+    done
+    if [ $# -eq 6 ]; then
+        if [ "$6" == "order" ]; then
+            echo "$table_header"
+            echo "$table" | sort
+        else
+            >&2 echo "Error: Bad argument"
+            exit 1
+        fi
+    else
+        echo "$table_header"
+        echo "$table"
+    fi
+}
+
+cmd_create() {
+    echo "TODO: Manage create command"
+}
+
+cmd_insert() {
+    if [ $# -ne 5 ]; then
+        >&2 echo "Error: Bad arguments list"
+        exit 1
+    fi
+    echo "TODO: Manage insert command"
+}
+
+print_usage() {
+    >&2 echo -e 'Usage: ./bdsh [OPTION]... [COMMAND] [REQUEST]\nOPTION:
+  -h				display usage
+  -f FILE			json database file
+  -j                json formated output for selected command'
+    exit 1
+}
+
+load_file() {
+    if [ ! -f "$1" ]; then
+        >&2 echo "Error: File $1 doesn't exist"
+        exit 1occurence="\"desc_$1\""
+    check_occurence_in_file "$occurence"
+    output=${file##*desc_$1\": [}
+    output=${output%%]*}
+    echo $output | sed 's/\"//g' | sed 's/ //g' | sed -r 's/[,]+/\n/g'
+    fi
+    file=$(cat $1)
+}
+
+if [ $# -eq 0 ]; then
+    print_usage
+else
+    load_file "$2"
+fi
+if [ $# -eq 4 -o $# -eq 5 -o $# -eq 6 ] && [ "$1" == "-f" ]; then
+    if [ "$3" == "describe" ]; then
+        cmd_describe "$@"
+    elif [ "$3" == "create" ]; then
+        cmd_create "$@"
+    elif [ "$3" == "select" ]; then
+        cmd_select "$@"
+    elif [ "$3" == "insert" ]; then
+        cmd_insert "$@"
+    else
+        >&2 echo "Error: Bad argument"
+        exit 1
+    fi
+else
+    >&2 echo "Error: Bad arguments list"
+    exit 1
+fi
